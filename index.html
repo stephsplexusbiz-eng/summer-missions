@@ -523,38 +523,38 @@ function rowsToState(rows, wk) {
 }
 
 async function initialLoad(p) {
-  // Only show "Syncing" if we have no data yet — otherwise keep showing existing data
-  const hasData = DAYS.some((_,i) => {
-    const d = getDay(THIS_KEY, String(i), p);
-    return Object.keys(d.completed).length > 0;
-  });
-  if (!hasData) setSyncStatus(p,'busy','Syncing...');
-  else setSyncStatus(p,'busy','Refreshing...');
-
+  setSyncStatus(p,'busy','Syncing...');
   try {
     const rows = await sheetRead(THIS_KEY);
-    // Merge into state rather than wiping — preserves data across tab switches
     rowsToState(rows, THIS_KEY);
     setSyncStatus(p,'ok','Synced ✓');
+    renderPlayer(p); // only re-render after we have fresh data
   } catch(e) {
-    setSyncStatus(p,'err','Could not connect to Google Sheets');
+    setSyncStatus(p,'err','Could not connect — showing last known data');
     console.warn('load failed:',e);
+    // don't re-render on failure — keep showing whatever memory has
   }
-  renderPlayer(p);
 }
 
 async function loadParent() {
-  setSyncStatus('p','busy','Loading...');
+  setSyncStatus('p','busy','Loading from Google Sheets...');
+  // Show loading placeholders immediately so it doesn't look broken
+  document.getElementById('p-brayden-section').innerHTML='<div style="font-size:.82rem;color:var(--muted);padding:.75rem 0">⏳ Fetching Brayden\'s data...</div>';
+  document.getElementById('p-micah-section').innerHTML='<div style="font-size:.82rem;color:var(--muted);padding:.75rem 0">⏳ Fetching Micah\'s data...</div>';
   try {
     const rows = await sheetRead(THIS_KEY);
-    // Merge rather than wipe — same fix as initialLoad
     rowsToState(rows, THIS_KEY);
     setSyncStatus('p','ok','Last updated '+new Date().toLocaleTimeString());
+    if (rows.length === 0) {
+      setSyncStatus('p','ok','Connected — no missions logged yet this week');
+    }
     renderParent();
     showToast('✓ Refreshed!');
   } catch(e) {
-    setSyncStatus('p','err','Could not reach Sheets');
-    showToast('⚠️ Refresh failed');
+    setSyncStatus('p','err','Could not reach Google Sheets — check connection');
+    document.getElementById('p-brayden-section').innerHTML='<div style="font-size:.82rem;color:var(--danger);padding:.75rem 0">⚠️ Sheets connection failed. Check your internet and try Refresh again.</div>';
+    document.getElementById('p-micah-section').innerHTML='';
+    console.warn('Parent load failed:',e);
   }
 }
 
@@ -574,7 +574,10 @@ function showView(v) {
   });
   document.getElementById('view-'+v).classList.add('active');
   document.getElementById('tab-'+v).classList.add(v==='b'?'ab':v==='m'?'am':'ap');
-  if(v==='b'||v==='m'){ renderPlayer(v); initialLoad(v); }
+  if(v==='b'||v==='m'){
+    renderPlayer(v);      // render instantly from memory — never blank
+    initialLoad(v);       // then quietly sync in background
+  }
   if(v==='p') loadParent();
 }
 
