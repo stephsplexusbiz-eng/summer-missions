@@ -390,8 +390,6 @@ main { max-width: 820px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
   <div class="view" id="view-p">
     <button class="refresh-btn" onclick="loadParent()">↻ REFRESH — CHECK LATEST</button>
     <div class="sync-bar" style="margin-bottom:1.25rem"><div class="sync-dot" id="p-sync-dot"></div><span id="p-sync-label">Tap Refresh to load</span></div>
-    <div class="section-eyebrow">PENDING READING APPROVALS</div>
-    <div id="p-approvals" style="margin-bottom:1.5rem"><div style="font-size:.82rem;color:var(--muted)">Tap Refresh above ↑</div></div>
     <div class="section-eyebrow">BRAYDEN — THIS WEEK</div>
     <div class="parent-section" id="p-brayden-section"><div style="font-size:.82rem;color:var(--muted)">Tap Refresh above ↑</div></div>
     <div class="section-eyebrow">MICAH — THIS WEEK</div>
@@ -407,10 +405,10 @@ const MOM_PHONE  = '7034083831';
 
 const DAYS = ['MON','TUE','WED','THU','FRI'];
 const MISSIONS = [
-  { id:'read',    icon:'📖', name:'READ 5+ PAGES',   desc:'Enter pages + a 1-2 sentence summary as proof.', needsPages:true,  needsTextProof:true,  proofLabel:'BOOK SUMMARY (1-2 sentences):', proofPlaceholder:'What happened or what did you learn?', badge:'💵 $1/5 PGS', badgeClass:'badge-gold', requiresApproval:true },
-  { id:'food',    icon:'🍗', name:'EAT REAL FOOD',   desc:'Protein or actual meal — not just snacks. Type what you ate.', needsPages:false, needsTextProof:true,  proofLabel:'WHAT DID YOU EAT?', proofPlaceholder:'e.g. eggs and toast, chicken sandwich...', badge:'HEALTH', badgeClass:'', requiresApproval:false },
-  { id:'hygiene', icon:'🚿', name:'SHOWER + TEETH',  desc:'Be a functional human. You know the drill.', needsPages:false, needsTextProof:false, badge:'HYGIENE', badgeClass:'', requiresApproval:false },
-  { id:'move',    icon:'🏃', name:'MOVE YOUR BODY',  desc:'Gym, walk outside, or walking pad — 20+ min counts.', needsPages:false, needsTextProof:false, badge:'BODY', badgeClass:'', requiresApproval:false }
+  { id:'read',    icon:'📖', name:'READ 5+ PAGES',  shortName:'READ 5+',   desc:'Enter pages + a 1-2 sentence summary as proof.', needsPages:true,  needsTextProof:true,  proofLabel:'BOOK SUMMARY (1-2 sentences):', proofPlaceholder:'What happened or what did you learn?', badge:'💵 $1/5 PGS', badgeClass:'badge-gold', requiresApproval:false },
+  { id:'food',    icon:'🍗', name:'EAT REAL FOOD',  shortName:'REAL FOOD', desc:'Protein or actual meal — not just snacks. Type what you ate.', needsPages:false, needsTextProof:true,  proofLabel:'WHAT DID YOU EAT?', proofPlaceholder:'e.g. eggs and toast, chicken sandwich...', badge:'HEALTH XP', badgeClass:'', requiresApproval:false },
+  { id:'hygiene', icon:'🚿', name:'SHOWER + TEETH', shortName:'SHOWER +',  desc:'Be a functional human. You know the drill.', needsPages:false, needsTextProof:false, badge:'HYGIENE XP', badgeClass:'', requiresApproval:false },
+  { id:'move',    icon:'🏃', name:'MOVE YOUR BODY', shortName:'MOVE',      desc:'Gym, walk outside, or walking pad — 20+ min counts.', needsPages:false, needsTextProof:false, badge:'BODY XP', badgeClass:'', requiresApproval:false }
 ];
 
 // ── WEEK UTILS ──────────────────────────────────────────────────
@@ -574,13 +572,13 @@ function showView(v) {
 
 // ── DERIVED ─────────────────────────────────────────────────────
 function isDayComplete(day){
-  return MISSIONS.every(m=> m.requiresApproval ? day.approved[m.id]==='approved' : !!day.completed[m.id]);
+  return MISSIONS.every(m => !!day.completed[m.id]);
 }
 function isWeekComplete(p){ return DAYS.every((_,i)=>isDayComplete(getDay(THIS_KEY,String(i),p))); }
 function totalApprovedPages(p){
   return DAYS.reduce((acc,_,i)=>{
     const d=getDay(THIS_KEY,String(i),p);
-    return acc+(d.approved['read']==='approved'?(parseInt(d.pages['read'])||0):0);
+    return acc+(d.completed['read']?(parseInt(d.pages['read'])||0):0);
   },0);
 }
 
@@ -593,8 +591,7 @@ function renderPlayer(p){
 function renderPips(p){
   const c=document.getElementById(p+'-pips'); c.innerHTML='';
   DAYS.forEach((label,i)=>{
-    const done=isDayComplete(getDay(THIS_KEY,String(i),p));
-    const isToday=i===todayIdx();
+    const done=isDayComplete(getDay(THIS_KEY,String(i),p));    const isToday=i===todayIdx();
     const pip=document.createElement('div');
     pip.className='pip'+(done?(p==='b'?' done-b':' done-m'):'')+(isToday?' today':'');
     pip.innerHTML=label+'<span>'+(done?'✓':'·')+'</span>';
@@ -618,9 +615,8 @@ function renderWeekGrid(p){
     if(!isFut) col.onclick=()=>selectDay(p,i);
     const dhC=done?(p==='b'?'dh-done-b':'dh-done-m'):isToday?(p==='b'?'dh-b':'dh-m'):'dh-neutral';
     const tasks=MISSIONS.map(m=>{
-      const mDone=m.requiresApproval?day.approved[m.id]==='approved':!!day.completed[m.id];
-      const mPend=m.requiresApproval&&day.approved[m.id]==='pending';
-      return `<div class="task-dot ${mDone?'tdone':mPend?'tpend':''}"><span class="dot-icon">${m.icon}</span><span class="dot-label">${m.name.split(' ').slice(0,2).join(' ')}</span><span>${mDone?'✓':mPend?'⏳':''}</span></div>`;
+    const mDone=!!day.completed[m.id];
+      return `<div class="task-dot ${mDone?'tdone':''}"><span class="dot-icon">${m.icon}</span><span class="dot-label">${m.shortName}</span><span>${mDone?'✓':''}</span></div>`;
     }).join('');
     col.innerHTML=`<div class="day-header ${dhC}">${label}${isToday?' ★':''}${done?' ✓':''}</div><div class="day-tasks">${tasks}</div>`;
     c.appendChild(col);
@@ -644,31 +640,28 @@ function renderPanel(p,dayIdx){
   else if(locked&&!isToday) notice=`<span class="notice-pill notice-future">WEEK LOCKED</span>`;
 
   const missionsHTML=MISSIONS.map(m=>{
-    const mDone=m.requiresApproval?day.approved[m.id]==='approved':!!day.completed[m.id];
-    const mPend=m.requiresApproval&&day.approved[m.id]==='pending';
+    const mDone=!!day.completed[m.id];
     const bC=m.badgeClass||(p==='b'?'badge-b':'badge-m');
     let proofHTML='';
     if(m.needsTextProof){
-      if(!mDone&&!mPend&&editable){
+      if(!mDone&&editable){
         const pRow=m.needsPages?`<div class="proof-row"><input class="pages-input" type="number" min="5" max="999" id="${p}-${dayIdx}-pages" value="${day.pages[m.id]||''}" placeholder="0"><span style="font-size:.78rem;color:var(--muted)">pages read</span></div>`:'';
         proofHTML=`<div class="proof-wrap">${pRow}<label class="proof-label">${m.proofLabel}</label><textarea class="proof-textarea ${m.needsPages?'multi':'single'} ${focC}" id="${p}-${dayIdx}-${m.id}-text" placeholder="${m.proofPlaceholder}">${day.proof[m.id]||''}</textarea></div>`;
-      } else if((mDone||mPend)&&day.proof[m.id]){
+      } else if(mDone&&day.proof[m.id]){
         const pNote=m.needsPages&&day.pages[m.id]?`${day.pages[m.id]} pages · `:'';
-        proofHTML=`<div class="proof-display-text ${mPend?'pending-t':''}">${mPend?'⏳ Awaiting Mom · ':'📝 '}${pNote}"${day.proof[m.id]}"</div>`;
+        proofHTML=`<div class="proof-display-text">📝 ${pNote}"${day.proof[m.id]}"</div>`;
       }
     }
     let actHTML='';
-    if(editable&&!mDone&&!mPend){
+    if(editable&&!mDone){
       actHTML=`<div class="mr-actions"><button class="btn ${btnC}" onclick="completeTask('${p}',${dayIdx},'${m.id}')">MARK COMPLETE</button></div>`;
     } else if(mDone){
-      actHTML=`<div class="mr-actions"><span class="stamp stamp-done">✅ COMPLETE${m.requiresApproval?' — MOM APPROVED':''}</span>${editable&&!m.requiresApproval?`<button class="btn btn-undo" onclick="undoTask('${p}',${dayIdx},'${m.id}')">UNDO</button>`:''}</div>`;
-    } else if(mPend){
-      actHTML=`<div class="mr-actions"><span class="stamp stamp-pending">⏳ SUBMITTED — AWAITING MOM</span></div>`;
+      actHTML=`<div class="mr-actions"><span class="stamp stamp-done">✅ COMPLETE</span>${editable?`<button class="btn btn-undo" onclick="undoTask('${p}',${dayIdx},'${m.id}')">UNDO</button>`:''}</div>`;
     }
-    return `<div class="mission-row ${mDone?'done-row':''} ${mPend?'pending-row':''}"><div class="mr-top"><div class="mr-left"><div class="mr-icon ${iconC}">${m.icon}</div><div><div class="mr-name">${m.name}</div><div class="mr-desc">${m.desc}</div></div></div><div class="badge ${bC}">${m.badge}</div></div>${proofHTML}${actHTML}</div>`;
+    return `<div class="mission-row ${mDone?'done-row':''}"><div class="mr-top"><div class="mr-left"><div class="mr-icon ${iconC}">${m.icon}</div><div><div class="mr-name">${m.name}</div><div class="mr-desc">${m.desc}</div></div></div><div class="badge ${bC}">${m.badge}</div></div>${proofHTML}${actHTML}</div>`;
   }).join('');
 
-  const anyDone=MISSIONS.some(m=>m.requiresApproval?['approved','pending'].includes(day.approved[m.id]):!!day.completed[m.id]);
+  const anyDone=MISSIONS.some(m=>!!day.completed[m.id]);
   const dayComplete=isDayComplete(day);
 
   wrap.innerHTML=`<div class="mission-panel"><div class="panel-day-title">${label} MISSIONS ${notice}</div>${missionsHTML}${editable?`<div class="send-mom-wrap"><button class="send-mom-btn" ${!anyDone?'disabled':''} onclick="sendToMom('${p}',${dayIdx})">📲 ${dayComplete?'DAY COMPLETE — TEXT MOM':'SEND PROGRESS UPDATE TO MOM'}</button></div>`:''}</div>`;
@@ -691,18 +684,16 @@ async function completeTask(p,dayIdx,missionId){
     if(pages<5){showToast('📖 Enter at least 5 pages!');return;}
   }
 
-  if(m.requiresApproval){ status='pending'; day.approved[missionId]='pending'; }
-  else { day.completed[missionId]=true; }
-  day.proof[missionId]=proof;
-  day.pages[missionId]=pages;
+  day.completed[missionId]=true;
+  day.proof[missionId]=proof;  day.pages[missionId]=pages;
 
   setSyncStatus(p,'busy','Saving...');
   renderPlayer(p);
 
   try {
-    await sheetWrite(THIS_KEY,dayIdx,p,missionId,status,proof,pages);
+    await sheetWrite(THIS_KEY,dayIdx,p,missionId,'done',proof,pages);
     setSyncStatus(p,'ok','Saved ✓');
-    showToast(m.requiresApproval?'📬 Submitted — waiting for Mom!':'⚡ MISSION COMPLETE!');
+    showToast('⚡ MISSION COMPLETE!');
   } catch(e){
     setSyncStatus(p,'err','Save failed — check connection');
     showToast('⚠️ Save failed — try again');
@@ -731,9 +722,8 @@ function sendToMom(p,dayIdx){
   const done=isDayComplete(day);
   const lines=[`${done?'✅':'📋'} ${name} — ${label} Mission Report`,`Week of ${fmtRange(THIS_MON)}`,''];
   MISSIONS.forEach(m=>{
-    const mDone=m.requiresApproval?day.approved[m.id]==='approved':!!day.completed[m.id];
-    const mPend=m.requiresApproval&&day.approved[m.id]==='pending';
-    let line=`${mDone?'✅':mPend?'⏳':'—'} ${m.name}`;
+    const mDone=!!day.completed[m.id];
+    let line=`${mDone?'✅':'—'} ${m.name}`;
     if(m.needsPages&&day.pages[m.id]) line+=` (${day.pages[m.id]} pages)`;
     if(day.proof[m.id]) line+=`\n   "${day.proof[m.id]}"`;
     lines.push(line);
@@ -747,45 +737,7 @@ function sendToMom(p,dayIdx){
 }
 
 // ── PARENT VIEW ─────────────────────────────────────────────────
-function renderParent(){ renderApprovals(); renderParentKid('b'); renderParentKid('m'); }
-
-function renderApprovals(){
-  const c=document.getElementById('p-approvals');
-  const pending=[];
-  DAYS.forEach((_,i)=>['b','m'].forEach(p=>{
-    const day=getDay(THIS_KEY,String(i),p);
-    MISSIONS.filter(m=>m.requiresApproval).forEach(m=>{
-      if(day.approved[m.id]==='pending') pending.push({p,dayIdx:i,missionId:m.id,day,m});
-    });
-  }));
-  if(!pending.length){c.innerHTML='<div style="font-size:.82rem;color:var(--muted);padding:.4rem 0">No pending approvals ✓</div>';return;}
-  c.innerHTML=pending.map(({p,dayIdx,missionId,day,m})=>{
-    const name=p==='b'?'⚔️ Brayden':'🛡️ Micah';
-    const pNote=day.pages[missionId]?`${day.pages[missionId]} pages · `:'';
-    return `<div class="approve-row"><div><div class="approve-name">${name} · ${DAYS[dayIdx]} · ${m.name}</div><div class="approve-proof">${pNote}"${day.proof[missionId]||''}"</div></div><div class="approve-actions"><button class="btn btn-approve" onclick="approveTask('${p}',${dayIdx},'${missionId}')">APPROVE ✓</button><button class="btn btn-deny" onclick="denyTask('${p}',${dayIdx},'${missionId}')">DENY</button></div></div>`;
-  }).join('');
-}
-
-async function approveTask(p,dayIdx,missionId){
-  const day=ensureDay(THIS_KEY,String(dayIdx),p);
-  day.approved[missionId]='approved'; day.completed[missionId]=true;
-  try {
-    await sheetWrite(THIS_KEY,dayIdx,p,missionId,'approved',day.proof[missionId]||'',day.pages[missionId]||'');
-    showToast('✅ Approved & synced!');
-  } catch { showToast('✅ Approved!'); }
-  renderParent();
-}
-
-async function denyTask(p,dayIdx,missionId){
-  const day=ensureDay(THIS_KEY,String(dayIdx),p);
-  delete day.approved[missionId]; delete day.completed[missionId];
-  delete day.proof[missionId]; delete day.pages[missionId];
-  try {
-    await sheetWrite(THIS_KEY,dayIdx,p,missionId,'denied','','');
-    showToast("↩️ Denied — they'll resubmit.");
-  } catch { showToast("↩️ Denied."); }
-  renderParent();
-}
+function renderParent(){ renderParentKid('b'); renderParentKid('m'); }
 
 function renderParentKid(p){
   const c=document.getElementById(`p-${p==='b'?'brayden':'micah'}-section`);
@@ -797,9 +749,8 @@ function renderParentKid(p){
   const grid='<div class="parent-week-grid">'+DAYS.map((label,i)=>{
     const day=getDay(THIS_KEY,String(i),p), dc=isDayComplete(day);
     const tasks=MISSIONS.map(m=>{
-      const mDone=m.requiresApproval?day.approved[m.id]==='approved':!!day.completed[m.id];
-      const mPend=m.requiresApproval&&day.approved[m.id]==='pending';
-      return `<div class="pdc-task ${mDone?'done':mPend?'pend':''}">${m.icon} ${mDone?'✓':mPend?'⏳':'—'}</div>`;
+      const mDone=!!day.completed[m.id];
+      return `<div class="pdc-task ${mDone?'done':''}">${m.icon} ${mDone?'✓':'—'}</div>`;
     }).join('');
     return `<div class="parent-day-col"><div class="pdc-header ${dc?pdcC:''}">${label}${dc?' ✓':''}</div><div class="pdc-tasks">${tasks}</div></div>`;
   }).join('')+'</div>';
