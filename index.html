@@ -523,9 +523,17 @@ function rowsToState(rows, wk) {
 }
 
 async function initialLoad(p) {
-  setSyncStatus(p,'busy','Syncing...');
+  // Only show "Syncing" if we have no data yet — otherwise keep showing existing data
+  const hasData = DAYS.some((_,i) => {
+    const d = getDay(THIS_KEY, String(i), p);
+    return Object.keys(d.completed).length > 0;
+  });
+  if (!hasData) setSyncStatus(p,'busy','Syncing...');
+  else setSyncStatus(p,'busy','Refreshing...');
+
   try {
     const rows = await sheetRead(THIS_KEY);
+    // Merge into state rather than wiping — preserves data across tab switches
     rowsToState(rows, THIS_KEY);
     setSyncStatus(p,'ok','Synced ✓');
   } catch(e) {
@@ -539,7 +547,7 @@ async function loadParent() {
   setSyncStatus('p','busy','Loading...');
   try {
     const rows = await sheetRead(THIS_KEY);
-    state[THIS_KEY]={};
+    // Merge rather than wipe — same fix as initialLoad
     rowsToState(rows, THIS_KEY);
     setSyncStatus('p','ok','Last updated '+new Date().toLocaleTimeString());
     renderParent();
