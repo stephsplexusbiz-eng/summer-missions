@@ -310,7 +310,10 @@ main { max-width: 820px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
 
 <header>
   <div class="logo">SUMMER <span>MISSIONS</span> HQ</div>
-  <div class="week-badge" id="weekBadge"></div>
+  <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+    <div class="week-badge" id="weekBadge"></div>
+    <button id="testModeBtn" onclick="toggleTestMode()" style="font-family:'Rajdhani',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.06em;padding:.28rem .65rem;border-radius:5px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:#ef4444;cursor:pointer;transition:all .2s">🧪 TEST MODE: OFF</button>
+  </div>
 </header>
 <nav>
   <button class="tab" id="tab-b" onclick="showView('b')">⚔️ BRAYDEN</button>
@@ -418,9 +421,36 @@ function getMondayOf(d) {
 }
 function weekKey(m)    { return m.toISOString().split('T')[0]; }
 function friday(m)     { const f=new Date(m); f.setDate(f.getDate()+4); return f; }
-function isFridayOver(m){ const f=friday(m); f.setHours(23,59,59,999); return new Date()>f; }
-function todayIdx()    { const d=new Date().getDay(); return (d===0||d===6)?-1:d-1; }
+function isFridayOver(m){ if(TEST_MODE) return false; const f=friday(m); f.setHours(23,59,59,999); return new Date()>f; }
+function todayIdx()    { if(TEST_MODE) return 2; const d=new Date().getDay(); return (d===0||d===6)?-1:d-1; } // test mode = Wednesday
 function isFutureDay(i){ const t=todayIdx(); return t>=0&&i>t; }
+
+// ── TEST MODE ───────────────────────────────────────────────────
+let TEST_MODE = false;
+function toggleTestMode() {
+  TEST_MODE = !TEST_MODE;
+  const btn = document.getElementById('testModeBtn');
+  if (TEST_MODE) {
+    btn.textContent = '🧪 TEST MODE: ON';
+    btn.style.background = 'rgba(239,68,68,.25)';
+    btn.style.borderColor = 'rgba(239,68,68,.7)';
+    btn.style.color = '#fca5a5';
+    showToast('🧪 Test mode ON — showing Wednesday');
+  } else {
+    btn.textContent = '🧪 TEST MODE: OFF';
+    btn.style.background = 'rgba(239,68,68,.1)';
+    btn.style.borderColor = 'rgba(239,68,68,.35)';
+    btn.style.color = '#ef4444';
+    showToast('Test mode OFF — back to real day');
+  }
+  // re-init selected day and re-render current view
+  const t = todayIdx();
+  selDay = { b: t>=0?t:4, m: t>=0?t:4 };
+  ['b','m'].forEach(p => {
+    if (document.getElementById('view-'+p).classList.contains('active')) renderPlayer(p);
+  });
+  if (document.getElementById('view-p').classList.contains('active')) renderParent();
+}
 function fmtRange(m)   { const f=friday(m),o={month:'short',day:'numeric'}; return m.toLocaleDateString('en-US',o)+' – '+f.toLocaleDateString('en-US',o); }
 
 const NOW=new Date(), THIS_MON=getMondayOf(NOW), THIS_KEY=weekKey(THIS_MON);
